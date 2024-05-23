@@ -2,21 +2,30 @@
 
 set -x
 
+# Check if the required number of arguments are provided
+if [ "$#" -ne 3 ]; then
+  echo "Usage: $0 aws_region bucket_name filename"
+exit 1
+fi
+
+# Assign command line arguments to variables
+aws_region=$1
+bucket_name=$2
+filename=$3
+
 # Store the AWS account ID in a variable
 aws_account_id=$(aws sts get-caller-identity --query 'Account' --output text)
 
 # Print the AWS account ID from the variable
 echo "AWS Account ID: $aws_account_id"
 
-# Set AWS region and bucket name
-aws_region="us-east-1"
-bucket_name="vivek-bucket"
+# Set other variables
 lambda_func_name="s3-lambda-function"
 role_name="s3-lambda-sns"
 email_address="gopim4959@gmail.com"
 
 # Create IAM Role for the project
-role_response=$(aws iam create-role --role-name s3-lambda-sns --assume-role-policy-document '{
+role_response=$(aws iam create-role --role-name $role_name --assume-role-policy-document '{
   "Version": "2012-10-17",
   "Statement": [{
     "Action": "sts:AssumeRole",
@@ -48,7 +57,7 @@ bucket_output=$(aws s3api create-bucket --bucket "$bucket_name" --region "$aws_r
 echo "Bucket creation output: $bucket_output"
 
 # Upload a file to the bucket
-aws s3 cp ./example_file.txt s3://"$bucket_name"/example_file.txt
+aws s3 cp "./$filename" s3://"$bucket_name"/"$filename"
 
 # Create a Zip file to upload Lambda Function
 zip -r s3-lambda-function.zip ./s3-lambda-function
@@ -74,7 +83,7 @@ aws lambda add-permission \
   --source-arn "arn:aws:s3:::$bucket_name"
 
 # Create an S3 event trigger for the Lambda function
-LambdaFunctionArn="arn:aws:lambda:us-east-1:$aws_account_id:function:s3-lambda-function"
+LambdaFunctionArn="arn:aws:lambda:$aws_region:$aws_account_id:function:$lambda_func_name"
 aws s3api put-bucket-notification-configuration \
   --region "$aws_region" \
   --bucket "$bucket_name" \
@@ -93,7 +102,6 @@ echo "SNS Topic ARN: $topic_arn"
 
 # Trigger SNS Topic using Lambda Function
 
-
 # Add SNS publish permission to the Lambda Function
 aws sns subscribe \
   --topic-arn "$topic_arn" \
@@ -104,6 +112,5 @@ aws sns subscribe \
 aws sns publish \
   --topic-arn "$topic_arn" \
   --subject "A new object created in s3 bucket" \
-  --message "Hello from vivek. Excited to finish this project end-to-end"
-
+  --message "Hello from Vivek.This is the practical implementation of s3 event triggering"
 
